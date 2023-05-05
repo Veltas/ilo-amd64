@@ -37,28 +37,21 @@ rdonly  mov     eax, 2    ; sys_open
         xor     esi, esi  ; O_RDONLY
         mov     edx, 666o
         syscall
-        mov     [rel f], eax
+        mov     edi, eax
         ret
 
 wronly  mov     eax, 2    ; sys_open
         mov     esi, 1    ; O_WRONLY
         mov     edx, 666o
         syscall
-        mov     [rel f], eax
-        ret
-
-read    xor     eax, eax ; sys_read
-        mov     edi, [rel f]
-        syscall
+        mov     edi, eax
         ret
 
 write   mov     eax, 1 ; sys_write
-        mov     edi, [rel f]
         syscall
         ret
 
 close   mov     eax, 3 ; sys_close
-        mov     edi, [rel f]
         syscall
         ret
 
@@ -69,7 +62,8 @@ load_image
         jz      .end
         mov     rsi, r15
         mov     edx, 65536 * 4
-        call    read
+        xor     eax, eax ; sys_read
+        syscall
         call    close
         xor     eax, eax
         lea     rbx, [rel dstack - 4]
@@ -91,6 +85,21 @@ save_image
         ret
 
 block_common
+        mov     eax, 8   ; sys_lseek
+        mov     esi, [rbx]
+        shl     esi, 12
+        xor     edx, edx ; SEEK_SET
+        syscall
+        xor     eax, eax ; sys_read
+        or      r10b, r10b
+        jz      .read
+        mov     al, 1    ; sys_write
+.read   lea     rsi, [r15 + 4*r8]
+        mov     edx, 4096
+        syscall
+        mov     esi, [rbx - 4]
+        sub     rbx, 8
+        ret
 
         align   32
 table   ret
@@ -247,7 +256,7 @@ cp      mov     ecx, eax
         repe cmpsd
         sete    al
         movzx   eax, al
-        neg     al
+        neg     eax
         ret
         align   32
 cy      mov     ecx, eax
@@ -277,32 +286,47 @@ iob     add     rbx, 4
         push    rax
         xor     edi, edi
         mov     rsi, rsp
-        mov     edx, 1
+        lea     edx, [rax + 1]
         syscall
         pop     rax
         ret
         align   32
-ioc     push    rax
+ioc     mov     r8d, eax
         mov     rdi, [rel blocks]
         call    rdonly
-        xor     ecx, ecx
+        xor     r10d, r10d
         call    block_common
         call    close
+        mov     eax, esi
+        ret
         align   32
-iod     push    rax
+iod     mov     r8d, eax
         mov     rdi, [rel blocks]
         call    wronly
-        mov     ecx, 1
+        mov     r10b, 1
         call    block_common
         call    close
+        mov     eax, esi
+        ret
         align   32
-ioe     ; TODO
+ioe     jmp     save_image
         align   32
-iof     ; TODO
+iof     call    load_image
+        sub     r13, 4
+        ret
         align   32
-iog     ; TODO
+iog     lea     r13, [r15 + 4*65536]
+        ret
         align   32
-ioh     ; TODO
+ioh     add     rbx, 8
+        mov     [rbx - 4], eax
+        lea     rdx, [rel astack]
+        neg     edx
+        lea     rax, [rbx + rdx - 4*32]
+        shr     eax, 2
+        mov     [rbx], eax
+        lea     rax, [r12 + rdx]
+        jmp     iohcont
         align   32
 io      mov     ecx, eax
         mov     eax, [rbx]
@@ -313,6 +337,9 @@ io      mov     ecx, eax
         lea     rcx, [rel ioa + rax]
         jmp     rcx
 .skip   ret
+
+iohcont shr     eax, 2
+        ret
 
 _start  xor     eax, eax
         lea     r15, [rel memory]
@@ -351,15 +378,16 @@ _start  xor     eax, eax
         add     rdi, rbp
         call    rdi
 .nop2   movzx   edi, r14b
-        shr     r14d, 8-5
+        shr     r14d, 8
         cmp     edi, 29
         ja      .nop3
         shl     edi, 5
         add     rdi, rbp
         call    rdi
 .nop3   mov     edi, r14d
-        cmp     edi, 29<<5
+        cmp     edi, 29
         ja      .nop4
+        shl     edi, 5
         add     rdi, rbp
         call    rdi
 .nop4   add     r13, 4
