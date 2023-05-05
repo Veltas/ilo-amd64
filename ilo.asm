@@ -68,7 +68,7 @@ load_image
         xor     eax, eax
         lea     rbx, [rel dstack - 4]
         lea     r12, [rel astack - 4]
-        mov     r13, r15
+        xor     r13d, r13d
 .end    ret
 
 save_image
@@ -105,9 +105,9 @@ block_common
 table   ret
         align   32
 li      add     rbx, 4
-        add     r13, 4
+        inc     r13d
         mov     [rbx], eax
-        mov     eax, [r13]
+        mov     eax, [r15 + 4*r13]
         ret
         align   32
 du      add     rbx, 4
@@ -133,35 +133,35 @@ po      add     rbx, 4
         sub     r12, 4
         ret
         align   32
-ju      lea     r13, [r15 + rax - 4]
+ju      lea     r13d, [eax - 1]
         mov     eax, [rbx]
         sub     rbx, 4
         ret
         align   32
 ca      add     r12, 4
-        mov     [r12], r13
-        lea     r13, [rax - 4]
-        mov     rax, [rbx]
+        mov     [r12], r13d
+        lea     r13d, [eax - 1]
+        mov     eax, [rbx]
         sub     rbx, 4
         ret
         align   32
 cc      cmp     dword[rbx], 0
         jz      .nocall
         add     r12, 4
-        mov     [r12], r13
-        lea     r13, [r15 + rax - 4]
+        mov     [r12], r13d
+        lea     r13d, [eax - 1]
 .nocall mov     eax, [rbx - 4]
         sub     rbx, 8
         ret
         align   32
 cj      cmp     dword[rbx], 0
         jz      .nojump
-        lea     r13, [r15 + rax - 4]
+        lea     r13d, [eax - 1]
 .nojump mov     eax, [rbx - 4]
         sub     rbx, 8
         ret
         align   32
-re      mov     r13, [r12]
+re      mov     r13d, [r12]
         sub     r12, 4
         ret
         align   32
@@ -286,7 +286,7 @@ iob     add     rbx, 4
         push    rax
         xor     edi, edi
         mov     rsi, rsp
-        lea     edx, [rax + 1]
+        mov     edx, 1
         syscall
         pop     rax
         ret
@@ -312,10 +312,10 @@ iod     mov     r8d, eax
 ioe     jmp     save_image
         align   32
 iof     call    load_image
-        sub     r13, 4
+        dec     r13d
         ret
         align   32
-iog     lea     r13, [r15 + 4*65536]
+iog     mov     r13d, 65536
         ret
         align   32
 ioh     add     rbx, 8
@@ -334,7 +334,7 @@ io      mov     ecx, eax
         cmp     ecx, 7
         ja      .skip
         shl     ecx, 5
-        lea     rcx, [rel ioa + rax]
+        lea     rcx, [rel ioa + rcx]
         jmp     rcx
 .skip   ret
 
@@ -345,7 +345,7 @@ _start  xor     eax, eax
         lea     r15, [rel memory]
         lea     rbx, [rel dstack - 4]
         lea     r12, [rel astack - 4]
-        mov     r13, r15
+        xor     r13d, r13d
         lea     rbp, [rel table]
         mov     rcx, [rsp+8]
         or      rcx, rcx
@@ -362,7 +362,7 @@ _start  xor     eax, eax
         mov     [rel rom], rcx
 .twoarg call    load_image
         jmp     .cond
-.cont   mov     r14d, [r13]
+.cont   mov     r14d, [r15 + 4*r13]
         movzx   edi, r14b
         shr     r14d, 8
         cmp     edi, 29
@@ -390,9 +390,8 @@ _start  xor     eax, eax
         shl     edi, 5
         add     rdi, rbp
         call    rdi
-.nop4   add     r13, 4
-.cond   lea     rcx, [rel memory + 4*65536]
-        cmp     r13, rcx
+.nop4   inc     r13
+.cond   cmp     r13, 65536
         jl      .cont
         mov     eax, 60 ; sys_exit
         xor     edi, edi
