@@ -322,10 +322,9 @@ ioh     add     rbx, 8
         mov     [rbx - 4], eax
         lea     rdx, [rel astack]
         neg     edx
-        lea     rax, [rbx + rdx - 4*32]
+        lea     rax, [rbx + rdx - 4*32 + 4]
         shr     eax, 2
         mov     [rbx], eax
-        lea     rax, [r12 + rdx]
         jmp     iohcont
         align   32
 io      mov     ecx, eax
@@ -338,7 +337,8 @@ io      mov     ecx, eax
         jmp     rcx
 .skip   ret
 
-iohcont shr     eax, 2
+iohcont lea     rax, [r12 + rdx + 4]
+        shr     eax, 2
         ret
 
 _start  xor     eax, eax
