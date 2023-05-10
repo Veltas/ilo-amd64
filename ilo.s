@@ -12,10 +12,11 @@
 
         .bss
 
-dstack: .skip   32*4
-astack: .skip   256*4
+        .align  8
 blocks: .skip   8        /* name of blocks file (ilo.blocks) */
 rom:    .skip   8        /* name of image (ilo.rom) */
+dstack: .skip   32*4
+astack: .skip   256*4
 a:      .skip   4        /* other variables for misc. purposes */
 b:      .skip   4
 f:      .skip   4
@@ -30,6 +31,16 @@ default_blocks:
         .asciz  "ilo.blocks"
 default_rom:
         .asciz  "ilo.rom"
+
+io_table:
+        .byte   0
+        .byte   iob-ioa
+        .byte   ioc-ioa
+        .byte   iod-ioa
+        .byte   ioe-ioa
+        .byte   iof-ioa
+        .byte   iog-ioa
+        .byte   ioh-ioa
 
         .text
 
@@ -167,28 +178,28 @@ re:     mov     (%r12), %r13d
         .align  32
 eq:     cmp     %eax, (%rbx)
         sete    %al
-        movzx   %al, %eax
+        movzbl  %al, %eax
         neg     %eax
         sub     $4, %rbx
         ret
         .align  32
 ne:     cmp     %eax, (%rbx)
         setne   %al
-        movzx   %al, %eax
+        movzbl  %al, %eax
         neg     %eax
         sub     $4, %rbx
         ret
         .align  32
 lt:     cmp     %eax, (%rbx)
         setl    %al
-        movzx   %al, %eax
+        movzbl  %al, %eax
         neg     %eax
         sub     $4, %rbx
         ret
         .align  32
 gt:     cmp     %eax, (%rbx)
         setg    %al
-        movzx   %al, %eax
+        movzbl  %al, %eax
         neg     %eax
         sub     $4, %rbx
         ret
@@ -255,7 +266,7 @@ cp:     mov     %eax, %ecx
         cmp     %eax, %eax
         repe cmpsd
         sete    %al
-        movzx   %al, %eax
+        movzbl  %al, %eax
         neg     %eax
         ret
         .align  32
@@ -269,6 +280,18 @@ cy:     mov     %eax, %ecx
         repe movsd
         ret
         .align  32
+io:     mov     %eax, %ecx
+        mov     (%rbx), %eax
+        sub     $4, %rbx
+        cmp     $7, %ecx
+        ja      1f
+        lea     io_table(%rip), %rdx
+        movzbl  (%rdx,%rcx), %ecx
+        lea     ioa(%rip), %rdx
+        add     %rdx, %rcx
+        jmp     *%rcx
+1:      ret
+
 ioa:    push    %rax
         mov     $1, %eax /* sys_write */
         mov     %eax, %edi
@@ -279,7 +302,6 @@ ioa:    push    %rax
         mov     (%rbx), %eax
         sub     $4, %rbx
         ret
-        .align  32
 iob:    add     $4, %rbx
         mov     %eax, (%rbx)
         xor     %eax, %eax /* sys_read */
@@ -290,7 +312,6 @@ iob:    add     $4, %rbx
         syscall
         pop     %rax
         ret
-        .align  32
 ioc:    mov     %eax, %r8d
         mov     blocks(%rip), %rdi
         call    rdonly
@@ -299,7 +320,6 @@ ioc:    mov     %eax, %r8d
         call    close
         mov     %esi, %eax
         ret
-        .align  32
 iod:    mov     %eax, %r8d
         mov     blocks(%rip), %rdi
         call    wronly
@@ -308,16 +328,12 @@ iod:    mov     %eax, %r8d
         call    close
         mov     %esi, %eax
         ret
-        .align  32
 ioe:    jmp     save_image
-        .align  32
 iof:    call    load_image
         dec     %r13d
         ret
-        .align  32
 iog:    mov     $65536, %r13d
         ret
-        .align  32
 ioh:    add     $8, %rbx
         mov     %eax, -4(%rbx)
         lea     astack(%rip), %rdx
@@ -325,20 +341,7 @@ ioh:    add     $8, %rbx
         lea     -4*32+4(%rbx,%rdx), %rax
         shr     $2, %eax
         mov     %eax, (%rbx)
-        jmp     iohcont
-        .align  32
-io:     mov     %eax, %ecx
-        mov     (%rbx), %eax
-        sub     $4, %rbx
-        cmp     $7, %ecx
-        ja      1f
-        shl     $5, %ecx
-        lea     ioa(%rip), %rdx
-        add     %rdx, %rcx
-        jmp     *%rcx
-1:      ret
-
-iohcont:lea     4(%r12,%rdx), %rax
+        lea     4(%r12,%rdx), %rax
         shr     $2, %eax
         ret
 
@@ -364,21 +367,21 @@ _start: xor     %eax, %eax
 3:      call    load_image
         jmp     3f
 2:      mov     (%r15,%r13,4), %r14d
-        movzx   %r14b, %edi
+        movzbl  %r14b, %edi
         shr     $8, %r14d
         cmp     $29, %edi
         ja      1f
         shl     $5, %edi
         add     %rbp, %rdi
         call    *%rdi
-1:      movzx   %r14b, %edi
+1:      movzbl  %r14b, %edi
         shr     $8, %r14d
         cmp     $29, %edi
         ja      1f
         shl     $5, %edi
         add     %rbp, %rdi
         call    *%rdi
-1:      movzx   %r14b, %edi
+1:      movzbl  %r14b, %edi
         shr     $8, %r14d
         cmp     $29, %edi
         ja      1f
