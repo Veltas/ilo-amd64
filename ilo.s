@@ -58,10 +58,6 @@ wronly: mov     $2, %eax    /* sys_open */
         mov     %eax, %edi
         ret
 
-write:  mov     $1, %eax /* sys_write */
-        syscall
-        ret
-
 close:  mov     $3, %eax /* sys_close */
         syscall
         ret
@@ -90,7 +86,8 @@ save_image:
         jz      1f
         mov     %r15, %rsi
         mov     $65536 * 4, %edx
-        call    write
+        mov     $1, %eax
+        syscall
         call    close
 1:      pop     %rax
         ret
@@ -329,19 +326,21 @@ iod:    mov     %eax, %r8d
         mov     %esi, %eax
         ret
 ioe:    jmp     save_image
-iof:    call    load_image
+iof:    push    %rax
+        call    load_image
         dec     %r13d
+        pop     %rax
         ret
 iog:    mov     $65536, %r13d
         ret
 ioh:    add     $8, %rbx
         mov     %eax, -4(%rbx)
-        lea     astack(%rip), %rdx
+        lea     astack-4(%rip), %rdx
         neg     %edx
-        lea     -4*32+4(%rbx,%rdx), %rax
+        lea     -4*32(%rbx,%rdx), %rax
         shr     $2, %eax
         mov     %eax, (%rbx)
-        lea     4(%r12,%rdx), %rax
+        lea     (%r12,%rdx), %rax
         shr     $2, %eax
         ret
 
@@ -354,8 +353,11 @@ _start: xor     %eax, %eax
         mov     8(%rsp), %rcx
         or      %rcx, %rcx
         jz      1f
-        mov     %rcx, blocks(%rip)
         mov     16(%rsp), %rcx
+        or      %rcx, %rcx
+        jz      1f
+        mov     %rcx, blocks(%rip)
+        mov     24(%rsp), %rcx
         or      %rcx, %rcx
         jz      2f
         mov     %rcx, rom(%rip)
