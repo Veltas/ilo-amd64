@@ -337,7 +337,7 @@ ioh:    add     $8, %rbx
         mov     %eax, -4(%rbx)
         lea     astack-4(%rip), %rdx
         neg     %edx
-        lea     -4*32(%rbx,%rdx), %rax
+        lea     4*32-8(%rbx,%rdx), %rax
         shr     $2, %eax
         mov     %eax, (%rbx)
         lea     (%r12,%rdx), %rax
