@@ -368,6 +368,7 @@ _start: xor     %eax, %eax
         mov     %rcx, rom(%rip)
 3:      call    load_image
         jmp     3f
+        .align  64
 2:      mov     (%r15,%r13,4), %r14d
         movzbl  %r14b, %edi
         shr     $8, %r14d
