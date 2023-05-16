@@ -1,4 +1,4 @@
-/*:AMD64 ilo, (c) 2023 Christopher Leonard, MIT License */
+/* AMD64 ilo, (c) 2023 Christopher Leonard, MIT License */
 
         .global _start
 
