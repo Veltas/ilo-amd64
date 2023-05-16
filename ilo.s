@@ -227,7 +227,7 @@ di:     mov     %eax, %ecx
         mov     (%rbx), %eax
         cdq
         idiv    %ecx
-        sub     $4, %rbx
+        mov     %edx, (%rbx)
         ret
         .align  32
 an:     and     (%rbx), %eax
